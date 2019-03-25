@@ -1,9 +1,8 @@
 <template>
-    <div class="meeting-show">
-
+    <div class="meeting-show" v-if="meeting">
         <!-- Page Heading -->
-        <h1 class="h3 mb-2 text-gray-800">Spotkanie ...</h1>
-        <p class="mb-4">Szczegóły dotyczące spotkania dnia ... w ...</p>
+        <h1 class="h3 mb-2 text-gray-800">Spotkanie {{meeting.starts_at}}</h1>
+        <p class="mb-4">Szczegóły dotyczące spotkania dnia {{meeting.starts_at}} w {{meeting.place}}</p>
 
         <!-- Content Row -->
         <div class="row">
@@ -32,30 +31,10 @@
                                 <th>temat</th>
                                 <th>opis</th>
                             </tr>
-                            <tr>
-                                <td>1</td>
-                                <td>...</td>
-                                <td>...</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>...</td>
-                                <td>...</td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>...</td>
-                                <td>...</td>
-                            </tr>
-                            <tr>
-                                <td>4</td>
-                                <td>...</td>
-                                <td>...</td>
-                            </tr>
-                            <tr>
-                                <td>5</td>
-                                <td>...</td>
-                                <td>...</td>
+                            <tr v-for="point in meeting.agenda">
+                                <td>{{point.order}}</td>
+                                <td>{{point.title}}</td>
+                                <td>{{point.content}}</td>
                             </tr>
                         </table>
                     </div>
@@ -162,45 +141,81 @@
 </template>
 
 <script>
-    /*eslint-disable*/
+/*eslint-disable*/
     export default {
         name: "MeetingShow",
         props: ['id'],
-        mounted() {
-            var container = this.$refs.frequencyChart;
-            var data = {
-                categories: ['a', 'b', 'c', 'd', 'e'],
-                series: [
-                    {
-                        name: 'Frekwencja',
-                        data: [5, 12, 7, 4, 13]
+        data() {
+            return {
+                meeting: null,
+                uri: '/meetings/' + this.id,
+                loading: true,
+                incoming: false,
+                started: false
+            }
+        },
+        methods: {
+            displayIncoming() {
+                this.incoming = true;
+                this.loading = false;
+            },
+            displayStarted() {
+                this.started = true;
+                this.loading = false;
+                this.setAgenda();
+                this.setFrequencyChart();
+            },
+            seedFrequencyChart() {
+                var container = this.$refs.frequencyChart;
+                var data = {
+                    categories: ['a', 'b', 'c', 'd', 'e'],
+                    series: [
+                        {
+                            name: 'Frekwencja',
+                            data: [5, 12, 7, 4, 13]
+                        },
+                    ]
+                };
+                var options = {
+                    chart: {
+                        width: 1160,
+                        height: 350,
+                        title: 'Frekwencja w porwónaniu z ostatnimi spotkaniami'
                     },
-                ]
-            };
-            var options = {
-                chart: {
-                    width: 1160,
-                    height: 350,
-                    title: 'Frekwencja w porwónaniu z ostatnimi spotkaniami'
-                },
-                yAxis: {
-                    title: 'Osób',
-                },
-                xAxis: {
-                    title: 'Spotkanie',
-                    pointOnColumn: true,
-                },
-                series: {
-                    showDot: true,
-                    zoomable: false,
-                    spline: true
-                },
-                tooltip: {
-                    suffix: 'osób'
-                },
-            };
-            container.setAttribute("style", `height: ${options.chart.height}px`)
-            chart.lineChart(container, data, options);
+                    yAxis: {
+                        title: 'Osób',
+                    },
+                    xAxis: {
+                        title: 'Spotkanie',
+                        pointOnColumn: true,
+                    },
+                    series: {
+                        showDot: true,
+                        zoomable: false,
+                        spline: true
+                    },
+                    tooltip: {
+                        suffix: 'osób'
+                    },
+                };
+                container.setAttribute("style", `height: ${options.chart.height}px`)
+                chart.lineChart(container, data, options);
+            }
+        },
+        mounted() {
+            window.mainApiInstance.request({
+                url: this.uri,
+                method: 'GET',
+            }).then(response => {
+                this.meeting = response.data.data.meeting;
+                if(this.meeting.status === 'Nadchodzi') {
+                    this.displayIncoming();
+                } else {
+                    this.displayStarted();
+                }
+            }).catch(error => {
+                this.$parent.dumpErrors(error.response.data.error.errors)
+            })
         }
     }
 </script>
